@@ -1,0 +1,23 @@
+#version 450 core
+    layout(location = 0) in vec3 vertex;
+    layout(location = 1) in vec3 incolor;
+    layout(location = 2) in vec2 coord;
+    layout(location = 3) in vec3 normal;
+    out vec2 Texcoord; 
+    out vec3 outcolor;
+    out vec3 vertexPos;//顶点在世界坐标中的位置向量
+    out vec3 Normal;//未处理的法向量
+    out mat4 transformMat;
+    uniform mat4 model;//变换矩阵;
+    uniform mat4 view;
+    uniform mat4 projection;
+    uniform mat3 normalModelMat;//正规矩阵
+    uniform mat3 normalViewMat;
+    void main(){
+        gl_Position = projection*view*model*vec4(vertex,1.0f);
+        vertexPos = vec3(view*model*vec4(vertex,1.0f));
+        transformMat = view;
+        outcolor = incolor;
+        Texcoord = coord;
+        Normal = normalViewMat*normalModelMat*normal;
+    }

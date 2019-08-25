@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/image" lang="fr">
+        <file alias="MyBox">box.jpg</file>
+        <file alias="fatboy">fatboy.png</file>
+    </qresource>
+</RCC>

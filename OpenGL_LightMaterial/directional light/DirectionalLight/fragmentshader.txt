@@ -1,0 +1,41 @@
+#version 450 core
+    in vec2 Texcoord; 
+    in vec3 outcolor;     
+    in vec3 vertexPos; //顶点在观察坐标中的位置向量
+    in vec3 Normal; //未处理的法向量
+    in mat4 transformMat; 
+    out vec4 color;     
+    struct DirectionalLight{
+        vec3 light;  //灯光颜色
+        vec3 direction; //灯光颜色
+        float ambient; 
+        float diffuse;
+        float specular; 
+    };
+    uniform DirectionalLight directionallight; 
+    struct Material{//物体材质
+        sampler2D diffuse; //漫反射材质(漫反射贴图)
+        sampler2D specular; //镜面反射材质(镜面反射贴图)
+        float shineness; //光照散射系数（越低越散）
+    }; 
+    uniform Material material; //物体材质一致性变量
+    void main(){
+        vec3 Direction = directionallight.direction; //顶点到光源的方向
+
+        vec3 ambient = directionallight.ambient*directionallight.light*vec3(texture(material.diffuse,Texcoord)); //环境光照
+
+        vec3 intrudelight = normalize(Direction); //入射光（方向向量）
+        vec3 norm = normalize(Normal); 
+        float diffuseStrength = max(0.0f,dot(norm,intrudelight)); //漫反射光照因子
+        vec3 diffuse = diffuseStrength*directionallight.diffuse*directionallight.light*vec3(texture(material.diffuse,Texcoord)); //漫反射光照（在观察空间里计算）
+
+        vec3 reflectlight = normalize(reflect(-Direction,norm)); //反射光
+//pow(x,y):x的y次方；reflect(L,N):return L-2*dot(L,N)*N; 32是镜面反射强度
+        vec3 viewDir = normalize(-vertexPos); 
+        float specularStrength = pow(max(0.0f,dot(reflectlight,viewDir)),material.shineness); //镜面反射因子
+        vec3 specular = 10*specularStrength*vec3(texture(material.specular,Texcoord))*directionallight.specular*directionallight.light; //镜面反射
+
+//mix(x,y,a):return x*(1-a)+y*a        
+        vec4 result = vec4(ambient + diffuse + specular,1.0); 
+        color = result; 
+    }

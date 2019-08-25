@@ -1,0 +1,77 @@
+﻿#ifndef OPENGLWIDGET_H
+#define OPENGLWIDGET_H
+
+#include <QOpenGLWidget>
+#include <QOpenGLFunctions_4_5_Core>
+#include <QSurfaceFormat>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLTexture>
+#include <QVector3D>
+#include <QColor>
+#include <QTimer>
+#include "vertices.h"
+#include "shader.h"
+#include "camera.h"
+#include "sphere.h"
+#include "material.h"
+#include "model.h"
+
+#define lightcolor (QVector3D(1.0f,1.0f,1.0f))
+#define TextureCount 2
+
+class OpenGLWidget : public QOpenGLWidget,protected QOpenGLFunctions_4_5_Core
+{ 
+public:
+    enum Sampler2DN{
+        SamplerDiffuse = 0,
+        SamplerSpecular
+    };
+    OpenGLWidget(QWidget *parent = 0);
+    ~OpenGLWidget();
+    void SetMaterial(Material material, QOpenGLShaderProgram *pro = NULL);
+    void SetMaterial(TexMaterial texmaterial,QOpenGLShaderProgram *pro = NULL);
+    void SetLight(Light light,QOpenGLShaderProgram *pro = NULL);
+    void SetLight(DirectionalLight light,QOpenGLShaderProgram *pro = NULL);
+    void SetLight(PointLight light,QOpenGLShaderProgram *pro = NULL);
+    void SetLight(SpotLight light,QOpenGLShaderProgram *pro = NULL);
+    void ReceiveData(QVector3D location, QVector4D rotate, QVector3D scale, QString dir, QString path);
+protected:
+    virtual void initializeGL();
+    virtual void paintGL();
+    virtual void resizeGL(int w,int h);
+private:
+    GLuint VAO,VBO,EBO;
+    GLuint VAO_Sphere,VBO_Sphere,EBO_Sphere;
+    int vnumber;
+
+    QVector<Model*> vectorModel;//模型信息
+    QVector<QVector3D> vectorTranslate;//模型在世界空间中的位置
+    QVector<QVector4D> vectorRotate;//模型在世界空间中的旋转
+    QVector<QVector3D> vectorScale;//模型在世界空间中的缩放
+    Model *model;
+
+    void ShaderProgram(const char *vshader, const char *fshader,QOpenGLShaderProgram *pro);
+    void ShaderProgram(const QString &vshaderfileName, const QString &fshaderfileName, QOpenGLShaderProgram *pro);
+    QOpenGLShaderProgram *program,*programforSphere;
+
+    Camera *viewcamera;//摄像机
+    void SetModelMatrix(int index,QOpenGLShaderProgram *pro);//模型矩阵（物体空间——世界空间）
+    void SetViewMatrix(QOpenGLShaderProgram *pro);//观察矩阵（世界空间——观察空间）
+    void SetProjectionMatrix(int width,int height,QOpenGLShaderProgram *pro);//投影矩阵（观察空间——切割空间）（将三维坐标映射到2维坐标）
+
+    QTimer *timer;//刷新
+
+    void SetSphereVertex();
+
+    QOpenGLTexture *texture[TextureCount];//纹理
+    GLuint texID[TextureCount];
+    void SetTexture(QOpenGLTexture *tex, GLuint Sampler, QOpenGLShaderProgram *pro, const char *name, QImage img);
+
+    int count;//全局变量
+
+    bool refreshFlag;//更新标志
+    void RefreshModel();
+};
+
+#endif // OPENGLWIDGET_H
+

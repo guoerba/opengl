@@ -1,0 +1,123 @@
+#version 450 core
+    in vec2 Texcoord; 
+    in vec3 outcolor;     
+    in vec3 vertexPos; //顶点在观察坐标中的位置向量
+    in vec3 Normal; //未处理的法向量
+    in mat4 transformMat; 
+    out vec4 color;
+
+    struct DirectionalLight{
+        vec3 light;//光照
+        vec3 direction;//定向光方向向量
+        float ambient;
+        float diffuse;
+        float specular;
+    };
+    uniform DirectionalLight directionallight;
+
+    struct PointLight{
+        vec3 position;//光源位置向量
+        vec3 light;//光照
+        float ambient;
+        float diffuse;
+        float specular;
+        float constant;//衰减因子常数项
+        float linear;//衰减因子一次项
+        float quadratic;//衰减因子二次项
+    };
+    uniform PointLight pointlight;
+
+    struct SpotLight{
+        vec3 position;//光源位置向量(world space)
+        vec3 spotdir;//灯光照射方向(world space)
+        vec3 light;
+        float cutoff;//切光角的余弦值
+        float outercutoff;//外切光角的余弦值
+        float ambient;
+        float diffuse;
+        float specular;
+    };
+    uniform SpotLight spotlight;
+
+    struct Material{//物体材质
+        sampler2D diffuse; //漫反射材质(漫反射贴图)
+        sampler2D specular; //镜面反射材质(镜面反射贴图)
+        float shineness; //光照散射系数（越低越散）
+    }; 
+    uniform Material material; //物体材质一致性变量
+    vec3 CaculateDirectionalLight(DirectionalLight light, Material mate,in vec3 vertice,in vec3 normal);
+    vec3 CaculatePointLight(PointLight light, Material mate,in vec3 vertice,in vec3 normal);
+    vec3 CaculateSpotLight(SpotLight light, Material mate,in vec3 vertices,in vec3 normal);
+
+    void main(){
+        vec3 result;
+        result += CaculateDirectionalLight(directionallight,material,vertexPos,Normal);
+        result += CaculatePointLight(pointlight,material,vertexPos,Normal);
+        result += CaculateSpotLight(spotlight,material,vertexPos,Normal);
+        color = vec4(result,1.0f);
+    }
+
+    vec3 CaculateDirectionalLight(DirectionalLight light, Material mate,in vec3 vertice,in vec3 normal)
+    {
+        vec3 Direction = light.direction; //顶点到光源的方向
+
+        vec3 ambient = light.ambient*light.light*vec3(texture(mate.diffuse,Texcoord)); //环境光照
+
+        vec3 intrudelight = normalize(Direction); //入射光（方向向量）
+        float diffuseStrength = max(0.0f,dot(normal,intrudelight)); //漫反射光照因子
+        vec3 diffuse = diffuseStrength*light.diffuse*light.light*vec3(texture(mate.diffuse,Texcoord)); //漫反射光照（在观察空间里计算）
+
+        vec3 reflectlight = normalize(reflect(-Direction,normal)); //反射光
+//pow(x,y):x的y次方；reflect(L,N):return L-2*dot(L,N)*N; 32是镜面反射强度
+        vec3 viewDir = normalize(-vertice);
+        float specularStrength = pow(max(0.0f,dot(reflectlight,viewDir)),mate.shineness); //镜面反射因子
+        vec3 specular = 10*specularStrength*vec3(texture(mate.specular,Texcoord))*light.specular*light.light; //镜面反射
+
+        return(ambient + diffuse + specular);
+    }
+
+    vec3 CaculatePointLight(PointLight light, Material mate,in vec3 vertice,in vec3 normal)
+    {
+        vec3 lightPos = vec3(transformMat*vec4(light.position,1.0f));
+
+        float len = length(lightPos - vertice);//distance between lightsource and vertex
+        float attenuation = 1.0f/(light.constant + light.linear*len + light.quadratic*len);
+
+        vec3 ambient = attenuation*light.ambient*light.light*vec3(texture(mate.diffuse,Texcoord)); //环境光照
+
+        vec3 intrudelight = normalize(lightPos - vertice); //入射光（方向向量）
+        float diffuseStrength = max(0.0f,dot(normal,intrudelight)); //漫反射光照因子
+        vec3 diffuse = attenuation*diffuseStrength*light.diffuse*light.light*vec3(texture(mate.diffuse,Texcoord)); //漫反射光照（在观察空间里计算）
+
+        vec3 reflectlight = normalize(reflect(vertice - lightPos,normal)); //反射光
+//pow(x,y):x的y次方；reflect(L,N):return L-2*dot(L,N)*N; 32是镜面反射强度
+        vec3 viewDir = normalize(-vertice);
+        float specularStrength = pow(max(0.0f,dot(reflectlight,viewDir)),mate.shineness); //镜面反射因子
+        vec3 specular = 10*attenuation*specularStrength*vec3(texture(mate.specular,Texcoord))*light.specular*light.light; //镜面反射
+
+        return(ambient + diffuse + specular);
+
+    }
+
+    vec3 CaculateSpotLight(SpotLight light, Material mate,in vec3 vertices,in vec3 normal)
+    {
+      vec3 intrudelight = normalize(-vertices); //入射光（方向向量）
+//Front（spotdir）是一个向量，不是点。我们应该设置齐次向量为0，才能进行正确的坐标变换
+//注意齐次坐标，点的齐次坐标是1，向量的齐次坐标为0(不包含位移分量)，这对于坐标变换来说差异是显著的
+      vec3 lightDir = normalize(vec3(transformMat*vec4(light.spotdir,0.0f)));
+
+      float theta = dot(lightDir,-intrudelight);
+      float brightness = clamp((theta - light.outercutoff)/(light.cutoff - light.outercutoff),0.0f,1.0f);
+
+      vec3 ambient = light.ambient*light.light*vec3(texture(mate.diffuse,Texcoord)); //环境光照
+
+      float diffuseStrength = max(0.0f,dot(normal,intrudelight)); //漫反射光照因子
+      vec3 diffuse = brightness*diffuseStrength*light.diffuse*light.light*vec3(texture(mate.diffuse,Texcoord)); //漫反射光照（在观察空间里计算）
+
+      vec3 reflectlight = normalize(reflect(vertices,normal)); //反射光
+      float specularStrength = pow(max(0.0f,dot(reflectlight,intrudelight)),mate.shineness); //镜面反射因子
+      vec3 specular = brightness*10*specularStrength*vec3(texture(mate.specular,Texcoord))*light.specular*light.light; //镜面反射
+
+      return(ambient + diffuse + specular);
+    }
+

@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/texture">
+        <file>texture/awesomeface.png</file>
+        <file>texture/box.jpg</file>
+        <file>texture/container2.png</file>
+        <file>texture/container2_specular.png</file>
+        <file>texture/white.png</file>
+    </qresource>
+    <qresource prefix="/shader">
+        <file>fragmentshader.txt</file>
+        <file>vertexshader.txt</file>
+        <file>fragmentshaderwithoutlight.txt</file>
+        <file>vertexshaderwithoutlight.txt</file>
+    </qresource>
+</RCC>

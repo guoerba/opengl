@@ -1,0 +1,14 @@
+INPUT(
+./release\main.o
+./release\mainwindow.o
+./release\camera.o
+./release\openglwidget.o
+./release\sphere.o
+./release\mesh.o
+./release\model.o
+./release\qrc_res.o
+./release\moc_mainwindow.o
+./release\moc_camera.o
+./release\moc_sphere.o
+./release\moc_model.o
+);
